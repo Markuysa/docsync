@@ -1,0 +1,432 @@
+{
+  "id": "docsync-wf-02",
+  "name": "DocSync 02 · Publish (model merge / approve → Confluence)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "docsync/model",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "20549f04-7838-50f6-ba0b-da1db2f4f8dd",
+      "name": "GitLab model webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        200
+      ],
+      "webhookId": "0e89243f-73c6-5fd6-abea-2563e9b46d70"
+    },
+    {
+      "parameters": {
+        "jsCode": "// GitLab secret check and event filtering. Requires N8N_BLOCK_ENV_ACCESS_IN_NODE=false.\nconst item = $input.first().json;\nconst token = (item.headers || {})['x-gitlab-token'] || '';\nif ($env.GITLAB_WEBHOOK_SECRET && token !== $env.GITLAB_WEBHOOK_SECRET) {\n  throw new Error('DocSync: invalid X-Gitlab-Token');\n}\nconst body = item.body || {};\nconst kind = body.object_kind;\nconst a = body.object_attributes || {};\nif (kind === 'merge_request' && a.action !== 'merge') return [];\nif (kind === 'push' && body.ref !== `refs/heads/${(body.project || {}).default_branch || 'main'}`) return [];\nif (!['merge_request', 'push'].includes(kind)) return [];\nreturn [{ json: body }];"
+      },
+      "id": "e876bc1f-9f6a-5b69-a7b9-c34619652816",
+      "name": "Verify model event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCSYNC_ENGINE_URL }}/api/v1/publish",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-DocSync-Token",
+              "value": "={{ $env.DOCSYNC_API_TOKEN || '' }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 600000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "9ab7e7e0-32a2-57c9-80b6-d811c7a210a0",
+      "name": "Engine: publish",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// input: publish report (from Engine: publish or Unwrap publish)\nconst pub = $input.first().json || {};\nif (pub.noop) return [{ json: { text: pub.text, runId: null } }];\nconst pages = (pub.pages || []).map(p => `${p.status} ${p.title}${p.url ? ' ' + p.url : ''}`).join('\\n');\nconst conflicts = (pub.conflicts || []).map(c => ` ${c.title}: block ${c.blockId} ${c.status}`).join('\\n');\nreturn [{ json: { ...pub, text: `DocSync published architecture-model@${(pub.modelSha||'').slice(0,8)}${pub.dryRun ? ' (DRY RUN)' : ''}\\n${pages}${conflicts ? '\\n' + conflicts : ''}` } }];"
+      },
+      "id": "d08476e1-6574-503b-888e-270e445859ab",
+      "name": "Summarize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "docsync/approve",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ec2ae97c-568e-5318-a6ef-f7c3114bdfbd",
+      "name": "Approve webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        480
+      ],
+      "webhookId": "ab2bf922-2b7d-5a08-aa32-46c61414895a"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCSYNC_ENGINE_URL }}/api/v1/runs/{{ $json.query.run }}/approve",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-DocSync-Token",
+              "value": "={{ $env.DOCSYNC_API_TOKEN || '' }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "fbbf9bf3-8e3a-5d90-a6f2-7c186cb09ef7",
+      "name": "Engine: approve",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $input.first().json;\nif (!r.publish) return [{ json: { noop: true, text: `ℹ ${r.status}: run is already ${r.run?.status}`, pages: [], conflicts: [] } }];\nreturn [{ json: r.publish }];"
+      },
+      "id": "c6a6d128-f144-5ac3-a1a5-c9fbecba4dbb",
+      "name": "Unwrap publish",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// input: publish report (from Engine: publish or Unwrap publish)\nconst pub = $input.first().json || {};\nif (pub.noop) return [{ json: { text: pub.text, runId: null } }];\nconst pages = (pub.pages || []).map(p => `${p.status} ${p.title}${p.url ? ' ' + p.url : ''}`).join('\\n');\nconst conflicts = (pub.conflicts || []).map(c => ` ${c.title}: block ${c.blockId} ${c.status}`).join('\\n');\nreturn [{ json: { ...pub, text: `DocSync published architecture-model@${(pub.modelSha||'').slice(0,8)}${pub.dryRun ? ' (DRY RUN)' : ''}\\n${pages}${conflicts ? '\\n' + conflicts : ''}` } }];"
+      },
+      "id": "51c83122-4e92-548b-901d-9c88a72b21ae",
+      "name": "Summarize (approve)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "c47a1d5e-de77-5877-91a7-78b8ff454dd4",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCSYNC_NOTIFY_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.text, level: 'info', kind: 'published', source: 'docsync', runId: $json.runId || null, modelSha: $json.modelSha || null }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "785bde46-6e8c-532d-bb0b-5ca93bf2cf5a",
+      "name": "Notify: published",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "58568fbd-0910-4c5f-8fc6-028253a7d82e",
+              "leftValue": "={{ !!$('Notify: published').item.json.runId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ee18b9aa-d2aa-54fa-88fb-dc3a1533401d",
+      "name": "Has run?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCSYNC_ENGINE_URL }}/api/v1/audit",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-DocSync-Token",
+              "value": "={{ $env.DOCSYNC_API_TOKEN || '' }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 600000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ run_id: $('Notify: published').item.json.runId }) }}"
+      },
+      "id": "5b26bfeb-c8f0-5eca-b029-1cb0770e1565",
+      "name": "Engine: audit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        340
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const a = $input.first().json || {};\nif (a.status !== 'DONE') return [];\nconst open = (a.findings || []).filter(f => f.resolution === 'open');\nconst rest = (a.findings || []).length - open.length;\nconst text = open.length ? `DocSync audit: ${open.length} inline comment(s) on stale hand-written text\\n` + open.map(f => `• ${f.reason}`).join('\\n')\n                         : `DocSync audit: hand-written sections look consistent (${rest} low-confidence finding(s) kept in the report)`;\nreturn [{ json: { text, pagesChecked: a.pagesChecked } }];"
+      },
+      "id": "ebe84bae-1942-5f09-831d-1361314ceedb",
+      "name": "Summarize audit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCSYNC_NOTIFY_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.text, level: 'info', kind: 'audit', source: 'docsync' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "977090d8-f16b-5b6d-bca4-0f10c84322ae",
+      "name": "Notify: audit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2400,
+        340
+      ]
+    }
+  ],
+  "connections": {
+    "GitLab model webhook": {
+      "main": [
+        [
+          {
+            "node": "Verify model event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify model event": {
+      "main": [
+        [
+          {
+            "node": "Engine: publish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Engine: publish": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize": {
+      "main": [
+        [
+          {
+            "node": "Notify: published",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approve webhook": {
+      "main": [
+        [
+          {
+            "node": "Engine: approve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Engine: approve": {
+      "main": [
+        [
+          {
+            "node": "Unwrap publish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unwrap publish": {
+      "main": [
+        [
+          {
+            "node": "Summarize (approve)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize (approve)": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond": {
+      "main": [
+        [
+          {
+            "node": "Notify: published",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify: published": {
+      "main": [
+        [
+          {
+            "node": "Has run?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has run?": {
+      "main": [
+        [
+          {
+            "node": "Engine: audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Engine: audit": {
+      "main": [
+        [
+          {
+            "node": "Summarize audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize audit": {
+      "main": [
+        [
+          {
+            "node": "Notify: audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "docsync-wf-99"
+  },
+  "meta": {
+    "docsync": "Model MR merge (or approve link / Telegram button) → the engine generates, renders and publishes autoblocks; the approve reply is sent right after publishing; the LLM audit follows as a separate notification"
+  },
+  "pinData": {}
+}

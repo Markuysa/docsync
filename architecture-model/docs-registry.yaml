@@ -1,0 +1,60 @@
+# Реестр: какие страницы Confluence содержат какие автоблоки DocSync.
+# blockId совпадает с якорями docsync:auto:<blockId>:start/end на странице.
+# pageId заполняет `docsync confluence bootstrap` (создаёт страницы или привязывает по заголовку).
+space: SA
+parentPageId: null
+pages:
+  - key: orders-service
+    pageId: null
+    title: "Orders Service — системный анализ"
+    intro: |
+      <h2>Назначение</h2>
+      <p>Orders Service принимает заказы покупателей и оркестрирует их оплату и доставку.</p>
+      <h2>Ограничения и допущения</h2>
+      <p>Orders Service не вызывает Billing Service напрямую: списание инициируется batch-процессом раз в час.</p>
+    blocks:
+      - blockId: orders-integrations-table
+        heading: Интеграции
+        template: integrations-table
+        scope: "service:orders-service"
+      - blockId: orders-integration-cards
+        heading: Описание интеграций
+        template: integration-cards
+        scope: "service:orders-service"
+      - blockId: payments-c4-containers
+        heading: Архитектура (C4 Container)
+        template: c4-view
+        scope: "system:payments"
+        view: payments-containers
+  - key: billing-service
+    pageId: null
+    title: "Billing Service — системный анализ"
+    intro: |
+      <h2>Назначение</h2>
+      <p>Billing Service рассчитывает и списывает платежи через внешний банковский шлюз.</p>
+    blocks:
+      - blockId: billing-integrations-table
+        heading: Интеграции
+        template: integrations-table
+        scope: "service:billing-service"
+  - key: checkout-flow
+    pageId: null
+    title: "Сценарий: оформление заказа"
+    blocks:
+      - blockId: checkout-sequence
+        heading: Последовательность вызовов
+        template: sequence
+        scope: "flow:checkout"
+  - key: payments-overview
+    pageId: null
+    title: "Payments — обзор домена"
+    blocks:
+      - blockId: payments-c4-context
+        heading: Контекст (C4 Context)
+        template: c4-view
+        scope: "system:payments"
+        view: payments-context
+      - blockId: payments-integration-matrix
+        heading: Матрица интеграций домена
+        template: integrations-table
+        scope: "system:payments"

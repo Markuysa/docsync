@@ -1,0 +1,12 @@
+id: orders-service
+system: payments
+name: Orders Service
+technology: Kotlin, Spring Boot
+repo: payments/orders-service
+description: Приём и оркестрация заказов
+datastores:
+  - id: orders-db
+    technology: PostgreSQL 16
+tags: [core]
+manual:
+  notes: "Ручные заметки аналитика — DocSync это поле не меняет"

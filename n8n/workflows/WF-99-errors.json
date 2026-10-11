@@ -1,0 +1,59 @@
+{
+  "id": "docsync-wf-99",
+  "name": "DocSync 99 · Errors",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c42f3671-a0cb-563a-b6c4-7352105f9fe5",
+      "name": "On error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCSYNC_NOTIFY_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `DocSync ${$json.workflow.name}: ${$json.execution.error.message}\\n${$json.execution.url || ''}`, level: 'error', kind: 'error', source: 'docsync' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "e880aea9-abd6-53ef-93ed-ee8ad9ad6b11",
+      "name": "Notify: error",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "On error": {
+      "main": [
+        [
+          {
+            "node": "Notify: error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "docsync-wf-99"
+  },
+  "meta": {
+    "docsync": "Shared error handler of all DocSync workflows"
+  },
+  "pinData": {}
+}

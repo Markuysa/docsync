@@ -1,0 +1,5 @@
+id: payments
+name: Payments
+description: Домен приёма заказов и списаний
+owner: team-payments
+analyst: "@a.ivanova"

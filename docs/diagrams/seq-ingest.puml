@@ -1,0 +1,31 @@
+@startuml seq-ingest
+title Scenario 1 - merge to main of a service → proposal of model changes
+autonumber
+actor "Developer" as dev
+participant "GitLab" as gl
+participant "n8n\nWF-01 Ingest" as n8n
+participant "docsync engine" as eng
+participant "LLM\n(optional)" as llm
+participant "architecture-model\n(git)" as model
+participant "Messenger" as chat
+
+dev -> gl : merge MR → main
+gl -> n8n : Push Hook (before, after, project)
+n8n -> n8n : X-Gitlab-Token, ref == main?
+n8n -> eng : POST /api/v1/ingest
+eng -> gl : clone / fetch the service repository
+eng -> eng : extract: facts(before) vs facts(after)\n→ ChangeSet (integration_added …)
+eng -> eng : journal: run RECEIVED (idempotent by project:sha)
+alt no relevant files / no events / no-docs label
+  eng --> n8n : status SKIPPED
+else there are events
+  eng -> llm : enrich: map unresolved targets, descriptions
+  llm --> eng : events + description
+  eng -> model : checkout main, apply ChangeSet → YAML cards
+  eng -> eng : validate; preview (which pages are affected)
+  eng -> model : branch docsync/<service>-<run>, commit
+  eng -> gl : MR into architecture-model (label docsync),\nnote in the source MR
+  eng --> n8n : run PROPOSED {model_mr_url, preview, approveUrl}
+  n8n -> chat : "Update proposed: MR, pages, approve link"
+end
+@enduml

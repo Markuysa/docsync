@@ -1,0 +1,21 @@
+<!-- Example page "Orders Service — системный анализ" in Confluence storage format.
+     The analyst writes manual sections as usual. An autoblock = start/end anchors + a panel between them;
+     DocSync replaces everything between the anchors inclusively and never touches text outside them.
+     blockId in the anchors must match docs-registry.yaml. `docsync confluence bootstrap` creates this markup itself. -->
+<h2>Назначение</h2>
+<p>Orders Service принимает заказы и оркестрирует их оплату и доставку.</p>
+
+<h2>Интеграции</h2>
+<ac:structured-macro ac:name="anchor"><ac:parameter ac:name="">docsync:auto:orders-integrations-table:start</ac:parameter></ac:structured-macro>
+<ac:structured-macro ac:name="panel"><ac:parameter ac:name="title">Обновляется автоматически (DocSync)</ac:parameter>
+<ac:rich-text-body><p>Будет заполнено при первой публикации DocSync.</p></ac:rich-text-body></ac:structured-macro>
+<ac:structured-macro ac:name="anchor"><ac:parameter ac:name="">docsync:auto:orders-integrations-table:end</ac:parameter></ac:structured-macro>
+
+<h2>Архитектура (C4 Container)</h2>
+<ac:structured-macro ac:name="anchor"><ac:parameter ac:name="">docsync:auto:payments-c4-containers:start</ac:parameter></ac:structured-macro>
+<ac:structured-macro ac:name="panel"><ac:parameter ac:name="title">Обновляется автоматически (DocSync)</ac:parameter>
+<ac:rich-text-body><p><ac:image ac:width="900"><ri:attachment ri:filename="payments-containers.svg"/></ac:image></p></ac:rich-text-body></ac:structured-macro>
+<ac:structured-macro ac:name="anchor"><ac:parameter ac:name="">docsync:auto:payments-c4-containers:end</ac:parameter></ac:structured-macro>
+
+<h2>Нефункциональные требования</h2>
+<p>Ручной раздел. LLM-аудит DocSync может оставить здесь inline-комментарий, если текст устарел.</p>

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DocSync docs registry (docs-registry.yaml)",
+  "description": "Маппинг элементов модели на автоблоки страниц Confluence",
+  "type": "object",
+  "required": ["space", "pages"],
+  "properties": {
+    "space": { "type": "string" },
+    "parentPageId": { "type": ["string", "null"] },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "title", "blocks"],
+        "properties": {
+          "key": { "type": "string", "pattern": "^[a-z0-9-]+$", "description": "Стабильный ключ страницы (для bootstrap)" },
+          "pageId": { "type": ["string", "null"], "description": "ID страницы в Confluence; заполняет `docsync confluence bootstrap`" },
+          "title": { "type": "string" },
+          "dryRun": { "type": "boolean", "default": false },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["blockId", "template", "scope"],
+              "properties": {
+                "blockId": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+                "template": { "enum": ["integrations-table", "integration-cards", "c4-view", "sequence"] },
+                "scope": { "type": "string", "pattern": "^(service|system|flow|integration):[a-z0-9_.:-]+$" },
+                "view": { "type": "string", "description": "Ключ view в workspace.dsl (для c4-view)" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

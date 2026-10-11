@@ -1,0 +1,129 @@
+{
+  "id": "docsync-wf-03",
+  "name": "DocSync 03 · Reminders about unapproved runs",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "159666f3-757f-59e7-8b2d-4d847de88d17",
+      "name": "Every weekday 10:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DOCSYNC_ENGINE_URL }}/api/v1/runs?status=PROPOSED",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-DocSync-Token",
+              "value": "={{ $env.DOCSYNC_API_TOKEN || '' }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "97f10db4-f6d7-5334-948e-5661cce79d18",
+      "name": "Engine: open runs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = Date.now();\nconst runs = $input.all().map(i => i.json).flat().filter(r => r && r.run_id && now - Date.parse(r.proposed_at) > 24*3600*1000);\nif (!runs.length) return [];\nreturn [{ json: { text: '⏰ DocSync: waiting for approval for more than 1 day:\\n' + runs.map(r => `• ${r.service_id} ${r.model_mr_url} (since ${r.proposed_at})`).join('\\n') } }];"
+      },
+      "id": "7f95acf6-c4a1-5528-843a-daf5fb320580",
+      "name": "Overdue",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCSYNC_NOTIFY_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.text, level: 'warn', kind: 'reminder', source: 'docsync' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "30e157e9-1b12-5ca3-a6dd-7503b2718433",
+      "name": "Notify: reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Every weekday 10:00": {
+      "main": [
+        [
+          {
+            "node": "Engine: open runs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Engine: open runs": {
+      "main": [
+        [
+          {
+            "node": "Overdue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Overdue": {
+      "main": [
+        [
+          {
+            "node": "Notify: reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "docsync-wf-99"
+  },
+  "meta": {
+    "docsync": "Daily reminder to analysts about unapproved model MRs"
+  },
+  "pinData": {}
+}

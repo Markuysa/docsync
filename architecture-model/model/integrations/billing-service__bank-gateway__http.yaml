@@ -1,0 +1,16 @@
+from: billing-service
+to: bank-gateway
+protocol: http
+interaction: sync
+operations:
+  - "POST /v2/payments"
+description: Billing авторизует и списывает платёж во внешнем шлюзе банка.
+nfr:
+  timeoutMs: 5000
+  retries: 2
+status: active
+provenance:
+  mr: "payments/billing-service!41"
+  sha: 3f9c2a1
+manual:
+  notes: ""

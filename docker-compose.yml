@@ -1,0 +1,75 @@
+# DocSync local stack: n8n (orchestrator) + docsync engine + Kroki (rendering) [+ Structurizr Lite].
+#   docker compose up -d --build
+#   docker compose --profile structurizr up -d   # additionally a Structurizr server on :18081 (C4 embed mode)
+services:
+  docsync:
+    build: .
+    container_name: docsync
+    env_file: .env
+    environment:
+      DOCSYNC_DATA_DIR: /data
+      DOCSYNC_MODEL_REPO: /data/repos/architecture-model
+      DOCSYNC_SERVICE_REPOS: payments/orders-service=/data/repos/orders-service
+      KROKI_URL: http://kroki:8000
+      DOCSYNC_PUBLIC_URL: ${DOCSYNC_PUBLIC_URL:-http://localhost:8088}
+      DOCSYNC_APPROVE_INTERNAL_URL: http://n8n:5678/webhook/docsync/approve?run={runId}
+    volumes:
+      - ./data:/data
+    ports: ["8088:8088"]
+    depends_on: [kroki]
+
+  kroki:
+    image: yuzutech/kroki:latest
+    container_name: docsync-kroki
+    ports: ["8000:8000"]
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: docsync-n8n
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://localhost:5678/
+      N8N_SECURE_COOKIE: "false"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_RUNNERS_ENABLED: "true"
+      GENERIC_TIMEZONE: ${TZ:-Europe/Moscow}
+      # --- variables read by the DocSync workflows ($env.*)
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      DOCSYNC_ENGINE_URL: http://docsync:8088
+      DOCSYNC_API_TOKEN: ${DOCSYNC_API_TOKEN:-}
+      GITLAB_WEBHOOK_SECRET: ${GITLAB_WEBHOOK_SECRET:-demo-secret}
+      DOCSYNC_NOTIFY_URL: ${DOCSYNC_NOTIFY_URL:-http://docsync:8088/api/v1/notify}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/workflows:ro
+    ports: ["5678:5678"]
+    depends_on: [docsync]
+
+  structurizr:
+    # Structurizr on-premises (last release before the licensed "server"): DOCSYNC_C4_MODE=structurizr pushes the
+    # workspace here and Confluence pages embed live diagrams via iframe. `docsync structurizr init` creates the workspace.
+    profiles: ["structurizr"]
+    image: structurizr/onpremises:2025.11.09
+    container_name: docsync-structurizr
+    volumes:
+      - ./data/structurizr:/usr/local/structurizr
+    ports: ["18081:8080"]
+
+  structurizr-tls:
+    # https in front of Structurizr: Confluence Cloud pages are https, browsers block http iframes (mixed content).
+    # Certificates: data/tls/localhost.pem|key (self-signed, see docs/04) or real ones from your CA / Let's Encrypt.
+    profiles: ["structurizr"]
+    image: caddy:2
+    container_name: docsync-structurizr-tls
+    environment:
+      STRUCTURIZR_UPSTREAM: structurizr:8080
+    volumes:
+      - ./data/tls:/certs:ro
+      - ./data/tls/Caddyfile:/etc/caddy/Caddyfile:ro
+    ports: ["18443:18443"]
+    depends_on: [structurizr]
+
+volumes:
+  n8n_data:

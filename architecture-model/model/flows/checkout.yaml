@@ -1,0 +1,7 @@
+id: checkout
+name: Оформление заказа
+participants: [orders-service, billing-service, bank-gateway]
+steps:
+  - integration: billing-service__bank-gateway__http
+    operation: "POST /v2/payments"
+    note: Авторизация платежа

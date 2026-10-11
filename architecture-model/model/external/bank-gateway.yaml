@@ -1,0 +1,4 @@
+id: bank-gateway
+name: Bank Gateway
+vendor: "Внешний банк-эквайер"
+description: Авторизация и списание по картам

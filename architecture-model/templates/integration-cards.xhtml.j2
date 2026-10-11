@@ -1,0 +1,13 @@
+{% for r in rows %}
+<h3>{{ model.name_of(r.from) | e }} → {{ model.name_of(r.to) | e }} ({{ r.protocol }})</h3>
+<p>{{ r.description | default('') | e }}</p>
+<ul>
+<li>Тип взаимодействия: {{ 'асинхронное' if r.interaction == 'async' else 'синхронное' }}</li>
+<li>Операции: {{ (r.operations | default([])) | join(', ') | e or '—' }}</li>
+{% if r.nfr is defined %}<li>Таймаут: {{ r.nfr.timeoutMs | default('—') }} мс, ретраи: {{ r.nfr.retries | default('—') }}{% if r.nfr.sla is defined %}, SLA: {{ r.nfr.sla | e }}{% endif %}</li>{% endif %}
+{% if r.status == 'deprecated' %}<li><strong>Интеграция удалена из кода</strong> — требуется ревизия сценариев</li>{% endif %}
+{% if r.manual is defined and r.manual.notes %}<li>Заметки аналитика: {{ r.manual.notes | e }}</li>{% endif %}
+</ul>
+{% else %}
+<p><em>Интеграций пока нет</em></p>
+{% endfor %}

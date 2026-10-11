@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docsync.internal/schemas/change-set.schema.json",
+  "title": "DocSync ChangeSet",
+  "description": "Пакет изменений архитектуры, извлечённый из одного merge в main",
+  "type": "object",
+  "required": ["schemaVersion", "project", "service", "baseSha", "mergeSha", "events", "generatedAt"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "runKey": { "type": "string", "description": "<projectId>:<mrIid>:<mergeSha>; заполняет n8n после обогащения MR" },
+    "project": {
+      "type": "object",
+      "required": ["id", "path"],
+      "properties": {
+        "id": { "type": "integer" },
+        "path": { "type": "string" },
+        "url": { "type": "string" }
+      }
+    },
+    "service": { "type": "string", "description": "ID сервиса в модели (из docsync.yaml репозитория)" },
+    "mr": {
+      "type": "object",
+      "properties": {
+        "iid": { "type": "integer" },
+        "title": { "type": "string" },
+        "url": { "type": "string" },
+        "author": { "type": "string" },
+        "labels": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "baseSha": { "type": "string", "minLength": 7 },
+    "mergeSha": { "type": "string", "minLength": 7 },
+    "skipReason": { "type": ["string", "null"], "enum": [null, "no_relevant_files", "no_docs_label", "no_events"] },
+    "relevantFiles": { "type": "array", "items": { "type": "string" } },
+    "events": { "type": "array", "items": { "$ref": "#/$defs/ChangeEvent" } },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "extractorVersion": { "type": "string" }
+  },
+  "$defs": {
+    "ChangeEvent": {
+      "type": "object",
+      "required": ["eventId", "type", "from", "evidence", "source", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "eventId": { "type": "string" },
+        "type": {
+          "enum": [
+            "integration_added", "integration_removed", "integration_changed",
+            "service_added", "service_removed",
+            "datastore_added", "datastore_changed",
+            "topic_added", "topic_removed",
+            "external_system_added"
+          ]
+        },
+        "from": { "type": "string" },
+        "to": { "type": "string", "description": "ID элемента модели или 'unresolved:<raw>'" },
+        "protocol": { "enum": ["grpc", "http", "kafka", "rabbitmq", "jdbc", "s3", "other"] },
+        "interaction": { "enum": ["sync", "async"] },
+        "operations": { "type": "array", "items": { "type": "string" } },
+        "attributes": { "type": "object" },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["path", "sha"],
+            "properties": {
+              "path": { "type": "string" },
+              "lines": { "type": "string", "pattern": "^[0-9]+(-[0-9]+)?$" },
+              "sha": { "type": "string" },
+              "snippet": { "type": "string", "maxLength": 400 }
+            }
+          }
+        },
+        "source": { "enum": ["rule", "llm", "mr_template"] },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "rule": { "type": "string", "description": "ID сработавшего правила экстрактора" }
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+@startuml state-run
+title Run statuses (run.status)
+[*] --> RECEIVED : ChangeSet accepted
+RECEIVED --> SKIPPED : no events / no-docs label
+RECEIVED --> PROPOSED : branch + model MR created
+RECEIVED --> NEEDS_REVIEW : unresolved targets\nor validation errors
+RECEIVED --> FAILED : error (git, LLM, model)
+PROPOSED --> APPROVED : MR merged / approve
+NEEDS_REVIEW --> APPROVED : analyst fixed and merged
+PROPOSED --> REJECTED : MR closed / reject
+APPROVED --> PUBLISHED : all blocks updated
+APPROVED --> PARTIALLY_PUBLISHED : some blocks in CONFLICT
+PARTIALLY_PUBLISHED --> PUBLISHED : conflict resolved,\nre-publish
+SKIPPED --> [*]
+REJECTED --> [*]
+PUBLISHED --> [*]
+@enduml

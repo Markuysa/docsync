@@ -1,0 +1,21 @@
+@startuml
+{% set flow_id = scope.split(':')[1] %}
+{% set flow = model.flows[flow_id] %}
+title {{ flow.name }} (сгенерировано DocSync)
+skinparam responseMessageBelowArrow true
+
+{% for p in flow.participants %}
+participant "{{ model.name_of(p) }}" as {{ p | replace('-', '_') | replace(':', '_') | replace('.', '_') }}
+{% endfor %}
+
+{% for st in flow.steps %}
+{% set c = model.integrations[st.integration] %}
+{% set a = c.from | replace('-', '_') | replace(':', '_') | replace('.', '_') %}
+{% set b = c.to | replace('-', '_') | replace(':', '_') | replace('.', '_') %}
+{{ a }} {{ '->>' if c.interaction == 'async' else '->' }} {{ b }} : {{ st.operation }} ({{ c.protocol }})
+{% if st.note is defined %}note right: {{ st.note }}{% endif %}
+
+{% if c.interaction != 'async' %}{{ b }} --> {{ a }} : ответ
+{% endif %}
+{% endfor %}
+@enduml

@@ -1,0 +1,244 @@
+{
+  "id": "docsync-wf-01",
+  "name": "DocSync 01 · Ingest (GitLab push → model proposal)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "docsync/gitlab",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "b227e96b-ec94-5b68-8aa7-23b1fe0ba422",
+      "name": "GitLab push webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "613e4690-c982-5700-bb52-c4ab19a559f0"
+    },
+    {
+      "parameters": {
+        "jsCode": "// GitLab secret check and event filtering. Requires N8N_BLOCK_ENV_ACCESS_IN_NODE=false.\nconst item = $input.first().json;\nconst token = (item.headers || {})['x-gitlab-token'] || '';\nif ($env.GITLAB_WEBHOOK_SECRET && token !== $env.GITLAB_WEBHOOK_SECRET) {\n  throw new Error('DocSync: invalid X-Gitlab-Token');\n}\nconst body = item.body || {};\nconst def = (body.project || {}).default_branch || 'main';\nif (body.object_kind !== 'push' || body.ref !== `refs/heads/${def}`) return [];   // only merges to main are interesting\nreturn [{ json: body }];"
+      },
+      "id": "16e9ec1a-ba7d-5911-acc8-a8123853545c",
+      "name": "Verify & filter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCSYNC_ENGINE_URL }}/api/v1/ingest",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-DocSync-Token",
+              "value": "={{ $env.DOCSYNC_API_TOKEN || '' }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 600000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "379bffaf-c8fd-512c-9e14-ea4cb67b31b4",
+      "name": "Engine: ingest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "72e2979d-100e-4496-aa2a-0b7a14a858c2",
+              "leftValue": "={{ ['PROPOSED','NEEDS_REVIEW'].includes($json.status) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b94e3f39-05ae-53e7-9a2d-6d16785e8920",
+      "name": "Proposed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCSYNC_NOTIFY_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `DocSync: ${$json.service_id} - ${($json.changeset.events||[]).length} architecture change(s) (${$json.status}).\\n`\n      + `Model MR: ${$json.model_mr_url}\\nPages: ${($json.preview.pages||[]).map(p => p.title).join('; ')}\\n`\n      + `Approve without GitLab: ${$json.preview.approveUrl}`, level: 'info', kind: 'proposed', source: 'docsync', runId: $json.run_id, service: $json.service_id, mrUrl: $json.model_mr_url, approveUrl: $json.preview.approveUrl }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "6fd27f38-5505-5d74-a913-736fd45e273c",
+      "name": "Notify: review needed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "3b7e563f-e56d-4e7c-a9f5-477d315cb22b",
+              "leftValue": "={{ $json.status === 'FAILED' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "db5425f0-1358-5a90-aa30-35297cef9d62",
+      "name": "Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCSYNC_NOTIFY_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `DocSync ingest ${$json.project_path}@${($json.merge_sha||'').slice(0,8)}: ${$json.error}`, level: 'error', kind: 'failed', source: 'docsync' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "81f2c01f-0c27-5c56-b22b-093c36b0e0ba",
+      "name": "Notify: failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        520
+      ]
+    }
+  ],
+  "connections": {
+    "GitLab push webhook": {
+      "main": [
+        [
+          {
+            "node": "Verify & filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify & filter": {
+      "main": [
+        [
+          {
+            "node": "Engine: ingest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Engine: ingest": {
+      "main": [
+        [
+          {
+            "node": "Proposed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Proposed?": {
+      "main": [
+        [
+          {
+            "node": "Notify: review needed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Failed?": {
+      "main": [
+        [
+          {
+            "node": "Notify: failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "docsync-wf-99"
+  },
+  "meta": {
+    "docsync": "Push to main of a service → the engine extracts changes, opens an MR in architecture-model, notifies the analyst"
+  },
+  "pinData": {}
+}

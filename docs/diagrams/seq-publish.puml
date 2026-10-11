@@ -1,0 +1,43 @@
+@startuml seq-publish
+title Scenario 2 - approval → publish to Confluence → audit
+autonumber
+actor "Analyst" as an
+participant "GitLab" as gl
+participant "n8n\nWF-02 Publish" as n8n
+participant "docsync engine" as eng
+participant "architecture-model" as model
+participant "Kroki" as kroki
+participant "Confluence" as cf
+participant "LLM (optional)" as llm
+participant "Messenger" as chat
+
+alt approval in GitLab
+  an -> gl : approve + merge the model MR
+  gl -> n8n : MR Hook (action=merge)
+  n8n -> eng : POST /api/v1/publish {hook}
+else approval via the link from the notification
+  an -> n8n : GET /webhook/docsync/approve?run=<id>
+  n8n -> eng : POST /api/v1/runs/<id>/approve
+  eng -> gl : merge MR (or git merge in local mode)
+end
+eng -> model : checkout main, validate
+eng -> eng : generate: Structurizr DSL (inlined),\nPlantUML sequence, XHTML blocks, manifest
+eng -> kroki : structurizr?view-key=…, plantuml → SVG
+loop pages from the manifest
+  eng -> cf : GET page (storage, version)
+  eng -> eng : find docsync:auto:<id> anchors;\nblock hash == hash of last publication?
+  alt block was edited by hand
+    eng -> eng : CONFLICT - block skipped
+  else
+    eng -> cf : PUT attachment SVG; PUT page (version+1)
+  end
+  eng -> eng : journal: publication
+end
+eng --> n8n : report {pages, conflicts}
+n8n -> eng : POST /api/v1/audit {run_id}
+eng -> cf : CQL search + hand-written section texts
+eng -> llm : "what is stale?" → findings (quote, reason, suggestion)
+eng -> eng : guardrails: quote verbatim on page, confidence ≥ 0.7, not a duplicate
+eng -> cf : inline comments
+n8n -> chat : "Published: pages, conflicts, N comments"
+@enduml

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docsync.internal/schemas/integration.schema.json",
+  "title": "Integration card (model/integrations/*.yaml)",
+  "type": "object",
+  "required": ["from", "to", "protocol", "interaction", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "from": { "type": "string" },
+    "to": { "type": "string" },
+    "protocol": { "enum": ["grpc", "http", "kafka", "rabbitmq", "jdbc", "s3", "other"] },
+    "interaction": { "enum": ["sync", "async"] },
+    "operations": { "type": "array", "items": { "type": "string" } },
+    "description": { "type": "string", "description": "Черновик пишет LLM на стадии MR, правит аналитик" },
+    "nfr": {
+      "type": "object",
+      "properties": {
+        "timeoutMs": { "type": "integer" },
+        "retries": { "type": "integer" },
+        "sla": { "type": "string" }
+      }
+    },
+    "status": { "enum": ["active", "deprecated", "needs_review"] },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "mr": { "type": "string" },
+        "sha": { "type": "string" },
+        "runId": { "type": "string" },
+        "source": { "enum": ["rule", "llm", "mr_template", "manual"] },
+        "confidence": { "type": "number" }
+      }
+    },
+    "manual": { "type": "object", "description": "Поля аналитика. DocSync никогда не изменяет." }
+  }
+}

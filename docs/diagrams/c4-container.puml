@@ -1,0 +1,31 @@
+@startuml c4-container
+!include <C4/C4_Container>
+title DocSync - Containers (C4 L2)
+
+Person(analyst, "System analyst")
+System_Ext(gitlab, "GitLab", "service repositories, architecture-model")
+System_Ext(confluence, "Confluence Cloud")
+System_Ext(llm, "LLM")
+System_Ext(chat, "Messenger")
+
+System_Boundary(ds, "DocSync") {
+  Container(n8n, "n8n", "workflows WF-01..03, WF-99", "Orchestrator: GitLab webhooks, approval, notifications, errors")
+  Container(engine, "docsync engine", "Python 3.12, FastAPI, CLI", "extract → apply → validate → generate → render → publish → audit")
+  Container(kroki, "Kroki", "Docker", "Structurizr DSL and PlantUML → SVG")
+  ContainerDb(journal, "Journal", "SQLite (data/)", "runs, publications, findings; block hashes for manual-edit detection")
+  Container(model, "architecture-model", "git: YAML + Structurizr DSL + Jinja2 + docs-registry", "Source of truth of the architecture")
+}
+
+Rel(gitlab, n8n, "Service Push Hook / model MR Hook", "HTTPS + X-Gitlab-Token")
+Rel(n8n, engine, "POST /api/v1/ingest, /publish, /runs/{id}/approve, /audit", "HTTP + X-DocSync-Token")
+Rel(engine, gitlab, "clone, push branch, MR, note", "REST API")
+Rel(engine, model, "apply ChangeSet, generate", "git")
+Rel(engine, kroki, "render", "HTTP")
+Rel(engine, journal, "statuses, hashes", "SQL")
+Rel(engine, confluence, "GET/PUT page, attachments, inline comments", "REST v2 / v1")
+Rel(engine, llm, "enrich, audit", "HTTPS")
+Rel(n8n, chat, "notifications", "webhook")
+Rel(analyst, chat, "receives the approve link")
+Rel(analyst, gitlab, "reviews model MRs")
+SHOW_LEGEND()
+@enduml

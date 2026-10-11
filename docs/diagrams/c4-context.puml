@@ -1,0 +1,26 @@
+@startuml c4-context
+!include <C4/C4_Context>
+title DocSync - System Context (C4 L1)
+
+Person(dev, "Developer", "Merges MRs into main of a service")
+Person(analyst, "System analyst", "Approves model MRs, owns the pages")
+Person(architect, "Architect", "Owns views in workspace.dsl")
+
+System(docsync, "DocSync", "Keeps system-analysis artifacts in sync with code changes")
+
+System_Ext(gitlab, "GitLab", "Service repositories + architecture-model repository")
+System_Ext(confluence, "Confluence Cloud", "System-analysis space: pages, diagrams")
+System_Ext(llm, "LLM", "Anthropic API or corporate gateway (optional)")
+System_Ext(chat, "Messenger", "Slack / Teams / Telegram (incoming webhook)")
+
+Rel(dev, gitlab, "merge to main")
+Rel(gitlab, docsync, "Push / MR webhooks", "HTTPS")
+Rel(docsync, gitlab, "clone, branch, MR into the model, note", "REST API")
+Rel(analyst, gitlab, "reviews and merges model MRs")
+Rel(architect, gitlab, "views, rules")
+Rel(docsync, confluence, "autoblocks, SVG attachments, inline comments", "REST v2")
+Rel(docsync, llm, "descriptions, target mapping, audit")
+Rel(docsync, chat, "notifications + approve link")
+Rel(analyst, confluence, "hand-written sections")
+SHOW_LEGEND()
+@enduml

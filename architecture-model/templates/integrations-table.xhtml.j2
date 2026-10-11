@@ -1,0 +1,24 @@
+{% macro status(s) -%}
+{% if s == 'deprecated' %}<ac:structured-macro ac:name="status"><ac:parameter ac:name="colour">Red</ac:parameter><ac:parameter ac:name="title">deprecated</ac:parameter></ac:structured-macro>
+{%- elif s == 'needs_review' %}<ac:structured-macro ac:name="status"><ac:parameter ac:name="colour">Yellow</ac:parameter><ac:parameter ac:name="title">проверить</ac:parameter></ac:structured-macro>
+{%- else %}<ac:structured-macro ac:name="status"><ac:parameter ac:name="colour">Green</ac:parameter><ac:parameter ac:name="title">active</ac:parameter></ac:structured-macro>{% endif %}
+{%- endmacro %}
+<table data-layout="wide">
+<tbody>
+<tr><th>Источник</th><th>Получатель</th><th>Протокол</th><th>Тип</th><th>Операции</th><th>Описание</th><th>Статус</th><th>Основание</th></tr>
+{% for r in rows %}
+<tr>
+<td>{{ model.name_of(r.from) | e }}</td>
+<td>{{ model.name_of(r.to) | e }}</td>
+<td>{{ r.protocol }}</td>
+<td>{{ 'асинхронно' if r.interaction == 'async' else 'синхронно' }}</td>
+<td>{% for op in r.operations | default([]) %}<code>{{ op | e }}</code>{% if not loop.last %}<br/>{% endif %}{% endfor %}</td>
+<td>{{ r.description | default('') | e }}</td>
+<td>{{ status(r.status) }}</td>
+<td>{{ (r.provenance | default({})).mr | default('') | e }}</td>
+</tr>
+{% else %}
+<tr><td colspan="8"><em>Интеграций пока нет</em></td></tr>
+{% endfor %}
+</tbody>
+</table>

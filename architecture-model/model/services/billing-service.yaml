@@ -1,0 +1,8 @@
+id: billing-service
+system: payments
+name: Billing Service
+technology: Go
+repo: payments/billing-service
+description: Расчёт и списание платежей
+datastores: []
+tags: [core]

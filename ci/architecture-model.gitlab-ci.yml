@@ -1,0 +1,28 @@
+# CI of the architecture-model repository (GitLab).
+# The DocSync engine applies ChangeSets and opens MRs itself; the job of CI is to block merging an invalid model
+# and to show a diagram preview in the MR. Image: registry/<group>/docsync (Dockerfile in the root of this project).
+stages: [validate, preview]
+
+validate:
+  stage: validate
+  image: registry.example.com/platform/docsync:1.0.0
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    - docsync validate --model .
+
+preview:
+  stage: preview
+  image: registry.example.com/platform/docsync:1.0.0
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  variables:
+    KROKI_URL: https://kroki.example.com
+  script:
+    - docsync generate --model . --out build
+    - docsync render --out build
+  artifacts:
+    expose_as: "DocSync preview"
+    paths: [build/]
+    expire_in: 14 days
