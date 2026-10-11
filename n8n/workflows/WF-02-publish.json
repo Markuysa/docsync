@@ -188,7 +188,7 @@
           },
           "conditions": [
             {
-              "id": "58568fbd-0910-4c5f-8fc6-028253a7d82e",
+              "id": "54442e4c-9099-5687-be64-c0bc841cc151",
               "leftValue": "={{ !!$('Notify: published').item.json.runId }}",
               "rightValue": "",
               "operator": {

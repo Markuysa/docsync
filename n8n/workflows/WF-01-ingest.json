@@ -71,7 +71,7 @@
           },
           "conditions": [
             {
-              "id": "72e2979d-100e-4496-aa2a-0b7a14a858c2",
+              "id": "52487cde-422b-570e-b09d-eacc8521ca1b",
               "leftValue": "={{ ['PROPOSED','NEEDS_REVIEW'].includes($json.status) }}",
               "rightValue": "",
               "operator": {
@@ -124,7 +124,7 @@
           },
           "conditions": [
             {
-              "id": "3b7e563f-e56d-4e7c-a9f5-477d315cb22b",
+              "id": "c65563f3-a949-571f-a39c-a3dee9ce82f8",
               "leftValue": "={{ $json.status === 'FAILED' }}",
               "rightValue": "",
               "operator": {

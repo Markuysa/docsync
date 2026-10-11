@@ -70,7 +70,7 @@ def notify(text_expr: str, level: str = "info", kind: str = "info", extra: str =
 
 def if_expr(expr: str) -> dict:
     return {"conditions": {"options": {"caseSensitive": True, "leftValue": "", "typeValidation": "loose"},
-                           "conditions": [{"id": str(uuid.uuid4()), "leftValue": expr, "rightValue": "",
+                           "conditions": [{"id": str(uuid.uuid5(uuid.NAMESPACE_OID, expr)), "leftValue": expr, "rightValue": "",
                                            "operator": {"type": "boolean", "operation": "true", "singleValue": True}}],
                            "combinator": "and"}, "options": {}}
 
